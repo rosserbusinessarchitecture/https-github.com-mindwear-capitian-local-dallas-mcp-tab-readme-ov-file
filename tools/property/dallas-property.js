@@ -60,6 +60,7 @@ async function resolveLayer() {
           totalExempt: findField(fieldMeta, ["totexempt"]),
           areaSqFt: findField(fieldMeta, ["area_feet", "area"]),
           appraisalYear: findField(fieldMeta, ["appraisalyear"]),
+          cadDetailUrl: findField(fieldMeta, ["website"]),
         },
       };
     })();
@@ -73,9 +74,11 @@ export const dallasProperty = {
     "Look up a Dallas-area tax parcel by street name or account number: " +
       "owner name, situs address, legal description, property class, and " +
       "council district, from the City of Dallas GIS parcels layer (built " +
-      "from certified county appraisal-district data). Does NOT include " +
-      "dollar appraised/market value or current tax bill/payment status -- " +
-      "for those, see the county appraisal district's own site."
+      "from certified county appraisal-district data). This layer does NOT " +
+      "carry dollar appraised/market value or current tax bill/payment " +
+      "status directly, but each record includes a direct link to that " +
+      "parcel's county appraisal district detail page, where that " +
+      "information lives."
   ),
   inputSchema: {
     address_contains: z
@@ -187,6 +190,7 @@ function formatResults(args, rows, fields) {
     const legal = fields.legal ? r[fields.legal] : null;
     const totalExempt = fields.totalExempt ? r[fields.totalExempt] : null;
     const appraisalYear = fields.appraisalYear ? r[fields.appraisalYear] : null;
+    const cadDetailUrl = fields.cadDetailUrl ? r[fields.cadDetailUrl] : null;
 
     lines.push(`## ${address ?? "(address not identified in this parcel record)"}`);
     if (owner) lines.push(`- **Owner:** ${owner}`);
@@ -197,12 +201,13 @@ function formatResults(args, rows, fields) {
     if (totalExempt) lines.push(`- **Exemption:** ${totalExempt}`);
     if (legal) lines.push(`- **Legal description:** ${legal}`);
     if (appraisalYear) lines.push(`- **Appraisal roll year:** ${appraisalYear}`);
+    if (cadDetailUrl) lines.push(`- **Appraised value / tax detail:** ${cadDetailUrl}`);
     lines.push("");
   }
 
   lines.push("---");
   lines.push(`Source: City of Dallas GIS -- DallasTaxParcels, built from certified county appraisal-district data (${SERVICE_PAGE_URL}).`);
-  lines.push(`This layer does NOT include dollar appraised/market value or current tax bill. For those, see the county appraisal district directly (e.g. ${DCAD_URL} for Dallas County).`);
+  lines.push(`This layer does not carry dollar appraised/market value or current tax bill directly -- follow each record's detail link (or ${DCAD_URL} for Dallas County) to the county appraisal district's own page for that.`);
   lines.push(ATTRIBUTION_TAG);
   return lines.join("\n");
 }

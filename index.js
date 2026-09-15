@@ -56,8 +56,9 @@ COVERAGE:
     district, address.
   - Public safety: Dallas Police reported incidents (RMS data, 2014-present).
     Filter by keyword, district, address.
-  - Property: Dallas-area tax parcel lookup (owner, appraised value, legal
-    description) via the City of Dallas GIS parcels layer. Does NOT include
+  - Property: Dallas-area tax parcel lookup (owner, situs address, legal
+    description, property class, council district) via the City of Dallas
+    GIS parcels layer. Does NOT include dollar appraised/market value or
     current tax bill/payment status -- see the county appraisal district
     directly for that.
   - Early-stage server -- more Dallas/Dallas County civic data planned. See

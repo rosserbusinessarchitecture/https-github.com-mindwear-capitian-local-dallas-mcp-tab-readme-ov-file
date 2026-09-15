@@ -40,7 +40,7 @@ const ARGS = {
   "dallas_311": { department: "Code Compliance", limit: 3 },
   "dallas_permits": { limit: 3 },
   "dallas_crime": { limit: 3 },
-  "dallas_property": { address_contains: "Elm St", limit: 3 },
+  "dallas_property": { address_contains: "Elm", limit: 3 },
 };
 
 const EXPECT_SUCCESS = new Set([

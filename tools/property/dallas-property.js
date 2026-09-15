@@ -14,12 +14,20 @@ import { withAttributionTag, ATTRIBUTION_TAG } from "../../lib/attribution.js";
  * zero-setup `npx`-installed tool. This ArcGIS layer is the closest
  * official, live-queryable, no-key alternative for per-parcel lookups.
  *
- * Layer index and field names are resolved at runtime (`describeService` +
- * `describeLayerFields` + `findField`) rather than hardcoded, because this
- * fork's build environment has no outbound network access to confirm them
- * against the live service. Run `npm run test:contract` (needs real
- * internet access) to verify the discovered fields look right, and widen
- * the candidate substrings below if they don't resolve.
+ * IMPORTANT: this layer (verified live, layer 0 "Tax Parcels") does NOT
+ * carry dollar appraised/land/improvement values -- only APPRAISALYEAR
+ * (a year, not an amount). Fields confirmed live: ACCT/GIS_ACCT (account),
+ * ST_NUM/ST_DIR/ST_NAME/ST_TYPE/UNITID (situs address, split across
+ * columns, no combined address field), TAXPANAME1/2 (owner), LEGAL_1..5
+ * (legal description lines), PROP_CL/BLDG_CL/SPTBCODE (classification),
+ * DACOUNCIL (council district), TOTEXEMPT, AREA_FEET (lot size, sq ft).
+ * For an actual appraised/market value or current tax bill, the county
+ * appraisal district's own site is the only source -- linked below.
+ *
+ * Layer index and field names are still resolved at runtime
+ * (`describeService` + `describeLayerFields` + `findField`) rather than
+ * hardcoded, in case the service is ever re-published under a different
+ * layer id or column names -- see CONTRIBUTING.md for why.
  *
  * Source: https://gis.dallascityhall.com/arcgis/rest/services/Basemap/DallasTaxParcels/FeatureServer
  */
@@ -38,14 +46,20 @@ async function resolveLayer() {
       return {
         layerUrl,
         fields: {
-          account: findField(fieldMeta, ["account", "acct", "parcel_id", "apn"]),
-          address: findField(fieldMeta, ["situs", "site_addr", "prop_addr", "address"]),
-          owner: findField(fieldMeta, ["owner_name", "owner"]),
-          totalValue: findField(fieldMeta, ["total_val", "market_val", "appraised", "total_value"]),
-          landValue: findField(fieldMeta, ["land_val", "land_value"]),
-          improvementValue: findField(fieldMeta, ["impr_val", "improvement_value", "bldg_val"]),
-          legalDescription: findField(fieldMeta, ["legal_desc", "legal_description"]),
-          acreage: findField(fieldMeta, ["acreage", "acres"]),
+          account: findField(fieldMeta, ["acct", "account"]),
+          streetNum: findField(fieldMeta, ["st_num"]),
+          streetDir: findField(fieldMeta, ["st_dir"]),
+          streetName: findField(fieldMeta, ["st_name"]),
+          streetType: findField(fieldMeta, ["st_type"]),
+          unit: findField(fieldMeta, ["unitid"]),
+          city: findField(fieldMeta, ["city"]),
+          owner: findField(fieldMeta, ["taxpaname1", "taxpaname", "owner"]),
+          legal: findField(fieldMeta, ["legal_1", "legal_desc", "legal"]),
+          propertyClass: findField(fieldMeta, ["prop_cl"]),
+          councilDistrict: findField(fieldMeta, ["dacouncil", "council"]),
+          totalExempt: findField(fieldMeta, ["totexempt"]),
+          areaSqFt: findField(fieldMeta, ["area_feet", "area"]),
+          appraisalYear: findField(fieldMeta, ["appraisalyear"]),
         },
       };
     })();
@@ -56,19 +70,19 @@ async function resolveLayer() {
 export const dallasProperty = {
   name: "dallas_property",
   description: withAttributionTag(
-    "Look up a Dallas-area tax parcel by street address or account number: " +
-      "owner name, appraised/land/improvement value, legal description, and " +
-      "acreage, from the City of Dallas GIS parcels layer (built from " +
-      "certified county appraisal-district data). Does not include current " +
-      "tax bill/payment status -- for that, see the county appraisal " +
-      "district's own site."
+    "Look up a Dallas-area tax parcel by street name or account number: " +
+      "owner name, situs address, legal description, property class, and " +
+      "council district, from the City of Dallas GIS parcels layer (built " +
+      "from certified county appraisal-district data). Does NOT include " +
+      "dollar appraised/market value or current tax bill/payment status -- " +
+      "for those, see the county appraisal district's own site."
   ),
   inputSchema: {
     address_contains: z
       .string()
       .min(3)
       .optional()
-      .describe('Partial street address (situs address), e.g. "9501 San Lucas" or "Main St".'),
+      .describe('Partial street NAME (not full address) -- the layer indexes street name separately from number, e.g. "San Lucas" or "Main".'),
     account_number: z
       .string()
       .min(3)
@@ -100,12 +114,12 @@ export const dallasProperty = {
 
     const clauses = [];
     if (address_contains) {
-      if (!fields.address) {
+      if (!fields.streetName) {
         return errorContent(
-          "Could not identify the parcels layer's address field at query time -- try account_number instead, or retry later."
+          "Could not identify the parcels layer's street-name field at query time -- try account_number instead, or retry later."
         );
       }
-      clauses.push(likeClause(fields.address, address_contains));
+      clauses.push(likeClause(fields.streetName, address_contains));
     }
     if (account_number && fields.account) {
       clauses.push(`${fields.account} = '${String(account_number).replace(/'/g, "''")}'`);
@@ -134,9 +148,24 @@ function errorContent(text) {
   };
 }
 
+function buildAddress(r, fields) {
+  const parts = [
+    fields.streetNum ? r[fields.streetNum] : null,
+    fields.streetDir ? r[fields.streetDir] : null,
+    fields.streetName ? r[fields.streetName] : null,
+    fields.streetType ? r[fields.streetType] : null,
+  ].filter(Boolean);
+  const unit = fields.unit ? r[fields.unit] : null;
+  let addr = parts.join(" ");
+  if (unit) addr += ` #${unit}`;
+  const city = fields.city ? r[fields.city] : null;
+  if (city) addr += `, ${city}`;
+  return addr || null;
+}
+
 function formatResults(args, rows, fields) {
   const filterParts = [];
-  if (args.address_contains) filterParts.push(`address contains "${args.address_contains}"`);
+  if (args.address_contains) filterParts.push(`street name contains "${args.address_contains}"`);
   if (args.account_number) filterParts.push(`account=${args.account_number}`);
 
   const lines = [
@@ -149,27 +178,31 @@ function formatResults(args, rows, fields) {
   }
 
   for (const r of rows) {
-    const address = fields.address ? r[fields.address] : null;
+    const address = buildAddress(r, fields);
     const owner = fields.owner ? r[fields.owner] : null;
-    const totalValue = fields.totalValue ? r[fields.totalValue] : null;
-    const landValue = fields.landValue ? r[fields.landValue] : null;
-    const imprValue = fields.improvementValue ? r[fields.improvementValue] : null;
     const account = fields.account ? r[fields.account] : null;
-    const acreage = fields.acreage ? r[fields.acreage] : null;
-    const legal = fields.legalDescription ? r[fields.legalDescription] : null;
+    const propertyClass = fields.propertyClass ? r[fields.propertyClass] : null;
+    const councilDistrict = fields.councilDistrict ? r[fields.councilDistrict] : null;
+    const areaSqFt = fields.areaSqFt ? r[fields.areaSqFt] : null;
+    const legal = fields.legal ? r[fields.legal] : null;
+    const totalExempt = fields.totalExempt ? r[fields.totalExempt] : null;
+    const appraisalYear = fields.appraisalYear ? r[fields.appraisalYear] : null;
 
     lines.push(`## ${address ?? "(address not identified in this parcel record)"}`);
     if (owner) lines.push(`- **Owner:** ${owner}`);
-    if (totalValue) lines.push(`- **Total appraised value:** ${totalValue}${landValue || imprValue ? ` (land: ${landValue ?? "?"}, improvement: ${imprValue ?? "?"})` : ""}`);
-    if (acreage) lines.push(`- **Acreage:** ${acreage}`);
     if (account) lines.push(`- **Account #:** ${account}`);
+    if (propertyClass) lines.push(`- **Property class:** ${propertyClass}`);
+    if (councilDistrict) lines.push(`- **Council district:** ${councilDistrict}`);
+    if (areaSqFt) lines.push(`- **Lot area:** ${areaSqFt} sq ft`);
+    if (totalExempt) lines.push(`- **Exemption:** ${totalExempt}`);
     if (legal) lines.push(`- **Legal description:** ${legal}`);
+    if (appraisalYear) lines.push(`- **Appraisal roll year:** ${appraisalYear}`);
     lines.push("");
   }
 
   lines.push("---");
   lines.push(`Source: City of Dallas GIS -- DallasTaxParcels, built from certified county appraisal-district data (${SERVICE_PAGE_URL}).`);
-  lines.push(`For current tax bill/payment status, see the county appraisal district directly (e.g. ${DCAD_URL} for Dallas County).`);
+  lines.push(`This layer does NOT include dollar appraised/market value or current tax bill. For those, see the county appraisal district directly (e.g. ${DCAD_URL} for Dallas County).`);
   lines.push(ATTRIBUTION_TAG);
   return lines.join("\n");
 }

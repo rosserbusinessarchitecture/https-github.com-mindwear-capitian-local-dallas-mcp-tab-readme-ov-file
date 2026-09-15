@@ -1,6 +1,6 @@
 {
   "name": "dallas-civic-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Your AI's local guide to Dallas civic data: official, public, no-key data via MCP. Forked from Local Dallas MCP by Ed Neuhaus, built on the local-city-mcp-template standard.",
   "main": "index.js",
   "type": "module",

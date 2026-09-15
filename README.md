@@ -48,7 +48,7 @@ claude mcp add dallas-civic npx -y github:rosserbusinessarchitecture/https-githu
 - *"Any open code compliance 311 requests in council district 10?"*
 - *"What building permits were recently issued on Elm St?"*
 - *"Any reported police incidents near downtown recently?"*
-- *"Who owns 9501 San Lucas and what's it appraised at?"*
+- *"Who owns the parcel on San Lucas and what's its legal description?"*
 
 ---
 
@@ -61,7 +61,7 @@ claude mcp add dallas-civic npx -y github:rosserbusinessarchitecture/https-githu
 | `dallas_311` | City of Dallas 311 service requests (code compliance, streets, sanitation, etc). Filter by type, department, status, council district, or address. |
 | `dallas_permits` | City of Dallas building permits (new construction, remodels, electrical, mechanical, plumbing, etc). Filter by type, status, council district, or address. |
 | `dallas_crime` | Dallas Police reported incidents (RMS data, 2014-present). Filter by keyword, council district, or address. |
-| `dallas_property` | Dallas-area tax parcel lookup (owner, appraised value, legal description) via the City of Dallas GIS parcels layer. |
+| `dallas_property` | Dallas-area tax parcel lookup (owner, situs address, legal description, property class, council district) via the City of Dallas GIS parcels layer. Does not include dollar appraised value or tax bill status. |
 | `about` | Version + capability summary. |
 
 ## Sources of Truth
@@ -76,7 +76,7 @@ claude mcp add dallas-civic npx -y github:rosserbusinessarchitecture/https-githu
 | Property / tax parcels | City of Dallas GIS `DallasTaxParcels` FeatureServer, built from certified Dallas/Collin/Denton/Kaufman/Rockwall county appraisal-district data |
 | Geocoding | U.S. Census geocoder |
 
-**A note on the newer tools:** `dallas_permits`, `dallas_crime`, and `dallas_property` resolve their upstream field/column names *at runtime* against each source's own metadata endpoint, instead of hardcoding guessed names — this fork's development environment had no outbound network access to verify exact field names against a live sample before shipping. Run `npm run test:contract` (needs real internet access) to confirm each tool's discovered fields look sensible, and widen the candidate substrings in the tool file if a filter that should narrow results doesn't. See [CONTRIBUTING.md](CONTRIBUTING.md).
+**A note on the newer tools:** `dallas_permits`, `dallas_crime`, and `dallas_property` resolve their upstream field/column names *at runtime* against each source's own metadata endpoint, instead of hardcoding guessed names — this fork's development environment has no outbound network access to the data portals. `npm run test:contract` was subsequently run against live data (via a GitHub Codespace); `dallas_permits` and `dallas_crime` passed as originally written, and `dallas_property` needed a rewrite once the live field list showed the DallasTaxParcels layer splits the situs address across four columns (`ST_NUM`/`ST_DIR`/`ST_NAME`/`ST_TYPE`, no combined address field) and carries no dollar appraised/market value at all (only `APPRAISALYEAR`). See [CONTRIBUTING.md](CONTRIBUTING.md) for the runtime-discovery pattern this relies on.
 
 ## Architecture
 

@@ -69,6 +69,12 @@ npm run test:unit      # unit tests -- pure logic (formatters, normalizers)
 npm run test:contract  # boots the server, calls every tool through the real MCP layer
 ```
 
+If you're developing behind an `HTTPS_PROXY` (common in sandboxed/corporate dev
+environments) and `test:contract` fails every tool with connection errors even
+though the proxy itself is reachable, it's likely Node's native `fetch()` not
+reading `HTTPS_PROXY` by default -- rerun with
+`NODE_USE_ENV_PROXY=1 npm run test:contract` (Node >= 22.21).
+
 CI (`.github/workflows/ci.yml`) runs unit tests on every push;
 `.github/workflows/contract.yml` runs `test:contract` on a schedule + manual
 dispatch (kept separate from the required per-push check so merges aren't

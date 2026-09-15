@@ -1,0 +1,20 @@
+Local Dallas MCP
+Copyright (c) 2026 Ed Neuhaus
+
+This product is provided by Ed Neuhaus (https://edneuhaus.com).
+
+"Ed Neuhaus" and any associated marks are trademarks of their owner. The
+Apache License 2.0 grants no trademark rights (see LICENSE section 6 and
+TRADEMARK.md). Please keep this NOTICE and the attribution when you
+redistribute or build on this software.
+
+---
+
+Dallas Civic MCP
+Copyright (c) 2026 rosserbusinessarchitecture
+
+This is a derivative work based on Local Dallas MCP by Ed Neuhaus
+(https://edneuhaus.com), used under the Apache License 2.0. Property,
+building permits, and public-safety tools were added on top of the
+original weather, schools, and 311 tools. Please keep this NOTICE and both
+attributions when you redistribute or build on this software.
